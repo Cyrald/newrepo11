@@ -2,9 +2,7 @@
 
 ## Overview
 
-This is a full-featured e-commerce platform for natural and organic products, built as a React SPA with a Node.js/Express backend. The application serves customers shopping for natural products while providing comprehensive admin tools for product management, order processing, and customer support.
-
-The platform implements a role-based access control system supporting administrators, marketers, consultants, and customers. It integrates with third-party services for payments (YooKassa), delivery (CDEK, Boxberry), and email verification.
+This is a full-featured e-commerce platform for natural and organic products, built as a React SPA with a Node.js/Express backend. It provides an online shopping experience for customers and comprehensive admin tools for product, order, and customer management. The platform supports a role-based access control system (administrators, marketers, consultants, customers) and integrates with third-party services for payments, delivery, and email verification.
 
 ## User Preferences
 
@@ -15,453 +13,78 @@ Preferred communication style: Simple, everyday language.
 ### Frontend Architecture
 
 **Framework & Routing:**
-- React 18 with TypeScript for type safety
-- Wouter for lightweight client-side routing
-- Single Page Application (SPA) architecture
+- React 18 with TypeScript
+- Wouter for client-side routing
+- Single Page Application (SPA)
 
 **UI & Styling:**
-- Shadcn UI component library for consistent design system
+- Shadcn UI component library
 - Tailwind CSS for utility-first styling
-- Custom color palette: green (primary), beige, and gold accents
-- Mobile-first responsive design approach
+- Custom color palette: green (primary), beige, gold accents
+- Mobile-first responsive design
 - Typography: Open Sans (body), Playfair Display/Lora (serif headings)
+- Light/dark mode support
 
 **State Management:**
 - Zustand for global application state
 - TanStack Query (React Query v5) for server state management and caching
 - React Hook Form with Zod validation for form handling
 
-**Design System:**
-- Shadcn UI provides pre-built accessible components
-- Custom theme configuration in Tailwind with CSS variables
-- Light/dark mode support via ThemeProvider
-- Consistent spacing using Tailwind units (4, 6, 8, 12, 16, 20, 24)
-
 ### Backend Architecture
 
 **Server Framework:**
 - Node.js with Express.js
-- TypeScript for type safety across the stack
-- RESTful API endpoints under `/api` prefix
+- TypeScript for type safety
+- RESTful API endpoints under `/api`
 
 **Authentication & Authorization:**
 - JWT tokens for stateless authentication
 - bcrypt for password hashing
 - Role-based access control (RBAC) with middleware
-- Token verification middleware (`authenticateToken`)
-- Role requirement middleware (`requireRole`)
+- Roles: Customer, Consultant, Marketer, Admin
 
 **File Upload:**
-- Multer middleware for handling multipart/form-data
-- Separate storage for product images and chat attachments
-- File type validation (JPEG, PNG, WEBP only)
-- Files stored in local `/uploads` directory
+- Multer middleware for `multipart/form-data`
+- Stores product images and chat attachments in `/uploads`
+- Supports JPEG, PNG, WEBP formats
 
 **Real-time Communication:**
-- WebSocket server (ws library) for live support chat
-- Token-based WebSocket authentication
-- Mounted on `/ws` endpoint
+- WebSocket server (`ws` library) for live support chat
+- Token-based WebSocket authentication on `/ws` endpoint
 
 ### Data Storage Solutions
 
 **Database:**
 - PostgreSQL as the primary database
 - Neon serverless PostgreSQL for cloud deployment
-- Drizzle ORM for type-safe database queries and migrations
+- Drizzle ORM for type-safe queries and migrations
 
 **Schema Design:**
-- Users table with verification tokens and bonus balance
-- User roles table for flexible role assignment (users can have multiple roles)
-- Products and categories with hierarchical structure
-- Orders with support for promocodes and bonus points
-- Cart, wishlist, and comparison tables for user preferences
-- Support messages with file attachments
-- Payment cards and addresses for user convenience
-
-**Key Features:**
-- UUID primary keys for all tables
-- Timestamps for created/updated tracking
-- Soft delete patterns where applicable
-- Indexing on foreign keys and frequently queried fields
-
-### Authentication & Authorization
-
-**Authentication Flow:**
-- Email/password registration with email verification
-- Verification tokens with expiration
-- JWT tokens (7-day expiration) stored client-side
-- Nodemailer for sending verification emails
-
-**Authorization Roles:**
-1. **Customer** - Default role for registered users
-2. **Consultant** - Access to support chat only
-3. **Marketer** - Product, category, promotion management
-4. **Admin** - Full system access including user management
-
-**Role Flexibility:**
-- Users can have multiple concurrent roles
-- Roles stored in separate `user_roles` table with unique constraint
-- Middleware checks for required roles on protected routes
-
-### External Dependencies
-
-**Payment Integration:**
-- YooKassa SDK for payment processing
-- Handles online payments and payment status webhooks
-
-**Delivery Services:**
-- CDEK API for delivery calculations and tracking
-- Boxberry API as alternative delivery option
-- Multiple delivery methods supported per order
-
-**Email Service:**
-- Nodemailer for transactional emails
-- SMTP configuration via environment variables
-- Templates for verification, order confirmation, etc.
-
-**Database Service:**
-- Neon serverless PostgreSQL
-- Connection pooling via `@neondatabase/serverless`
-- WebSocket-based database connections
-
-**Development Tools:**
-- Vite for fast development and optimized builds
-- Drizzle Kit for database migrations
-- ESBuild for server bundling in production
+- Comprehensive schema including Users, Roles, Products, Categories, Orders, Cart, Wishlist, Comparison, Support Messages, Payment Cards, Addresses.
+- UUID primary keys, timestamps, soft delete patterns, and indexing.
 
 ### Business Logic
 
 **Bonus System:**
-- New users receive 100 bonus points on registration
-- Cashback rates: 3% (<1000₽), 5% (<2500₽), 7% (<10000₽), 10% (≥10000₽)
-- Bonuses cannot be earned when using promocodes or existing bonuses
-- Maximum 20% of order can be paid with bonuses
+- New users receive 100 bonus points.
+- Cashback rates based on order value (3% to 10%).
+- Bonuses cannot be earned with promocodes/existing bonuses.
+- Maximum 20% of order payable with bonuses.
 
 **Promocode System:**
-- Percentage-based discounts
-- Minimum/maximum order amount restrictions
-- Expiration dates
-- Usage limits per user
-- Active/inactive status toggle
-- Uppercase code normalization
+- Percentage-based discounts with min/max order restrictions.
+- Expiration dates, usage limits, active/inactive status.
+- Uppercase code normalization.
 
 **Order Processing:**
-- Multi-step checkout: address → delivery → payment → confirmation
-- Integration with delivery services for cost calculation
-- Support for multiple payment methods
-- Order status tracking (pending, confirmed, shipped, delivered, cancelled)
+- Multi-step checkout: address → delivery → payment → confirmation.
+- Integration with delivery services for cost calculation.
+- Support for multiple payment methods and order status tracking.
 
-## Recent Changes
+## External Dependencies
 
-### Fresh GitHub Import - Replit Environment Setup (November 16, 2025)
-
-**Setup Completed:**
-- ✅ Fresh clone from GitHub repository imported successfully
-- ✅ Installed all npm dependencies (607 packages)
-- ✅ Connected to PostgreSQL database (heliumdb on Helium)
-- ✅ Pushed database schema using Drizzle ORM (14 tables synchronized)
-- ✅ Configured development workflow on port 5000 with webview output
-- ✅ Verified frontend working correctly (ЭкоМаркет Russian e-commerce platform)
-- ✅ Verified backend API running on port 5000
-- ✅ Configured deployment for autoscale (npm run build → npm run start)
-- ✅ Server binding: 0.0.0.0:5000 (accessible via Replit webview)
-- ✅ AllowedHosts configured in Vite for Replit proxy support (server/vite.ts line 26)
-
-**Technical Configuration:**
-- Development server: Combined Express + Vite on port 5000
-- Production build: Vite build + ESBuild server bundling
-- Database: PostgreSQL on Helium (DATABASE_URL configured)
-- WebSocket: Support chat on `/ws` endpoint
-- File uploads: Multer middleware for images and attachments
-- Host configuration: 0.0.0.0:5000 with allowedHosts: true for Replit proxy
-
-**Project Status:**
-- Full-stack e-commerce platform for natural/organic products
-- React + TypeScript frontend with Shadcn UI components
-- Node.js + Express backend with JWT authentication
-- PostgreSQL database with Drizzle ORM
-- Role-based access control (Admin, Marketer, Consultant, Customer)
-- Ready for development and testing
-
-### Performance Optimization: Database Query Optimization (November 16, 2025)
-
-**Critical Bug Fixes Completed:**
-- ✅ Fixed N+1 query problem in all product-related endpoints
-- ✅ Implemented batch queries for product images using `inArray()`
-- ✅ Added decimal field normalization (price, rating, dimensions) in all endpoints
-- ✅ Fixed catalog page: added `onAddToCart` and `onAddToWishlist` handlers to ProductCard
-- ✅ Optimized database methods to use 2-3 queries instead of 1+N queries
-
-**Affected Methods:**
-1. `getProducts()` - Batch loads all product images in single query
-2. `getCartItems()` - Batch loads images with decimal normalization
-3. `getWishlistItems()` - Deduplicated IDs + batch queries + decimal normalization
-4. `getComparisonItems()` - Deduplicated IDs + batch queries + decimal normalization
-
-**Performance Impact:**
-- **Before:** 1 + N queries (1 for products + 1 per product for images)
-- **After:** 2-3 queries total (products + all images + categories if needed)
-- **Example:** Catalog with 30 products: 31 queries → 3 queries (10x improvement)
-
-**Technical Implementation:**
-- Used `inArray()` from Drizzle ORM for batch loading
-- Created image lookup maps (`imagesByProductId`) for O(1) access
-- Added `Array.from(new Set(...))` for ID deduplication
-- Normalized all decimal fields (price, discountPercentage, rating, etc.) to strings
-- Maintained consistent API contract across all endpoints
-
-**Frontend Fixes:**
-- `catalog-page.tsx`: Added missing `handleAddToCart` and `handleAddToWishlist` props to ProductCard
-- Proper error handling with toast notifications for cart/wishlist operations
-- Stock quantity validation before adding to cart
-
-**Architecture Review:** All changes passed architect review - no N+1 problems, proper serialization, production-ready code.
-
-### Comprehensive Project Analysis and Development Report (November 16, 2025) - CURRENT SESSION
-
-**Project Audit Completed:**
-- ✅ Analyzed entire codebase (backend, frontend, database)
-- ✅ Reviewed TODO.md (2084 lines) with complete development roadmap
-- ✅ Examined all 50+ API endpoints implementation
-- ✅ Reviewed all 14 database tables and schemas
-- ✅ Analyzed 12+ frontend pages and 60+ React components
-- ✅ Documented custom React hooks for all API interactions
-- ✅ Created comprehensive development report (ОТЧЕТ_О_РАЗРАБОТКЕ.md)
-
-**Key Findings:**
-- **Overall Progress:** ~65% to MVP completion
-- **Backend:** 95% complete (excellent foundation)
-- **Frontend:** 60% complete (core pages done, admin needs work)
-- **Database:** 100% complete (all 14 tables with proper schemas)
-- **Integrations:** 0% (YooKassa, CDEK, Boxberry pending)
-
-**Critical Missing Features (High Priority):**
-1. Admin pages: Categories management, Promocodes management, Statistics
-2. Support chat widget for customers (WebSocket integration)
-3. Support chat page for consultants/admins
-4. Checkout improvements: promocode application, bonus usage
-5. Email notifications system
-6. Full testing and QA
-
-**Non-Critical Features (Low Priority per user request):**
-- Payment integration (YooKassa) - can use placeholder initially
-- Delivery integration (CDEK/Boxberry) - can use fixed delivery cost initially
-
-**Replit Environment Status:**
-- ✅ Fresh GitHub import setup completed
-- ✅ All npm dependencies installed (607 packages including nanoid)
-- ✅ Connected to PostgreSQL database (heliumdb on Helium)
-- ✅ Database schema pushed (14 tables synchronized)
-- ✅ Development workflow configured on port 5000
-- ✅ Frontend verified working (Russian locale: ЭкоМаркет)
-- ✅ Backend API running correctly
-- ✅ Deployment configured for autoscale
-- ✅ Server binding: 0.0.0.0:5000 with allowedHosts: true
-- ✅ All LSP diagnostics resolved
-
-**Technical Configuration:**
-- Development server: Combined Express + Vite on port 5000
-- Production build: Vite build + ESBuild server bundling
-- Database: PostgreSQL on Helium (DATABASE_URL configured)
-- WebSocket: Support chat on `/ws` endpoint (needs frontend integration)
-- File uploads: Multer middleware operational
-- Vite HMR: Configured for Replit proxy
-
-**Estimated Timeline to MVP:**
-- Critical features completion: 2-3 weeks
-- Testing and bug fixes: 1 week
-- Payment integration (optional): 1 week
-- Total to functional MVP: 3-4 weeks
-
-**Next Steps (Prioritized):**
-1. Implement admin pages (categories, promocodes, statistics, support chat)
-2. Create customer support chat widget
-3. Complete checkout flow (promocodes, bonuses)
-4. Comprehensive testing and QA
-5. Production deployment
-6. (Optional) Integrate payment and delivery systems
-
-### Previous Import Setup (November 16, 2025)
-
-### Previous Import Setup (November 16, 2025)
-
-### Multi-Role Access Control System Implementation (November 16, 2025)
-
-**Completed:**
-- ✅ Fixed backend role-based authorization system for marketers and consultants
-- ✅ Updated requireRole middleware to support multiple roles (OR logic)
-- ✅ Granted marketers full CRUD access to: categories, products, product images, promocodes, statistics
-- ✅ Created new consultant-only endpoints: /api/support/conversations, /api/support/customer-info/:userId
-- ✅ Implemented ProtectedRoute component for frontend role-based access control
-- ✅ Updated App.tsx routing with role-based guards for all protected routes
-- ✅ Enhanced AdminSidebar with dynamic menu filtering based on user roles
-- ✅ Architecture review confirmed: all endpoints properly secured, no security issues
-
-**Role Permissions Matrix:**
-- **Admin**: Full system access (users, products, categories, orders, promocodes, support, statistics)
-- **Marketer**: Product management (products, categories, product images, promocodes, statistics)
-- **Consultant**: Support only (support conversations, customer information)
-- **Customer**: Shopping features (cart, wishlist, comparison, orders)
-
-**Technical Implementation:**
-- Backend: requireRole("admin", "marketer") middleware on all marketer-accessible endpoints
-- Backend: requireRole("admin", "consultant") on consultant support endpoints
-- Frontend: ProtectedRoute component wraps routes with role checks
-- Frontend: AdminSidebar filters menu items by authenticated user roles
-- Storage: getAllSupportConversations() method for consultant conversation list view
-
-### Fresh Replit Environment Setup (November 16, 2025)
-
-**GitHub Import Completed:**
-- ✅ Successfully imported from GitHub repository
-- ✅ Installed all npm dependencies (606 packages)
-- ✅ Connected to PostgreSQL database (Helium instance)
-- ✅ Pushed database schema successfully using Drizzle ORM
-- ✅ Configured development workflow on port 5000 with webview output
-- ✅ Verified frontend and backend are working correctly
-- ✅ Configured deployment for autoscale (npm run build → npm run start)
-- ✅ Server binding to 0.0.0.0:5000 for Replit environment
-- ✅ AllowedHosts configured in Vite for Replit proxy support (server/vite.ts line 26)
-- ✅ Production build verified successfully
-
-**Technical Configuration:**
-- Development server: Combined Express + Vite on port 5000
-- Production build: Vite build + ESBuild server bundling
-- Database: PostgreSQL on Helium (DATABASE_URL configured)
-- WebSocket: Support chat on `/ws` endpoint
-- File uploads: Multer middleware for images and attachments
-- Host configuration: Frontend on 0.0.0.0:5000 (accessible via Replit webview)
-
-**Database Status:**
-- Database: heliumdb on PostgreSQL Helium instance
-- Schema: 14 tables pushed successfully via Drizzle
-- Ready for seeding and application use
-
-### Previous Replit Environment Setup (November 16, 2025)
-
-**GitHub Import Completed:**
-- ✅ Successfully imported from GitHub repository
-- ✅ Installed all npm dependencies (606 packages)
-- ✅ Connected to existing PostgreSQL database (DATABASE_URL configured)
-- ✅ Pushed database schema successfully using Drizzle ORM
-- ✅ Configured development workflow on port 5000 with webview output
-- ✅ Verified frontend and backend are working correctly
-- ✅ Configured deployment for autoscale (npm run build → npm run start)
-- ✅ Server binding to 0.0.0.0:5000 for Replit environment
-- ✅ AllowedHosts configured in Vite for Replit proxy support
-
-**Technical Configuration:**
-- Development server: Combined Express + Vite on port 5000
-- Production build: Vite build + ESBuild server bundling
-- Database: PostgreSQL via Neon serverless (WebSocket connections)
-- WebSocket: Support chat on `/ws` endpoint
-- File uploads: Multer middleware for images and attachments
-
-### Previous Replit Environment Setup (November 15, 2025)
-
-**Completed:**
-- ✅ Imported GitHub repository and configured for Replit environment
-- ✅ Installed Node.js 20 and all npm dependencies (587 packages)
-- ✅ Created and configured PostgreSQL database (Helium)
-- ✅ Pushed database schema using Drizzle ORM (14 tables)
-- ✅ Ran seed script to populate initial data
-- ✅ Configured development workflow on port 5000 with webview output
-- ✅ Verified frontend loads correctly (React + Vite + TypeScript)
-- ✅ Verified backend API is running (Express server on port 5000)
-- ✅ Set up deployment configuration for autoscale with build step
-- ✅ Created .gitignore for Node.js project
-
-**Database Setup:**
-- Database: PostgreSQL on Helium
-- Connection: DATABASE_URL configured automatically
-- Seed data: Admin user (admin@ecomarket.ru / admin123), 5 categories, 6 products
-- All 14 tables created successfully
-
-**Development Environment:**
-- Server running on port 5000 (combined frontend + backend)
-- Vite dev server with HMR in middleware mode
-- Host: 0.0.0.0 (accessible in Replit webview)
-- AllowedHosts: configured for Replit proxy
-
-**Test Credentials:**
-- Admin: admin@ecomarket.ru / admin123
-- Roles: admin, marketer, consultant, customer
-
-### Backend API Implementation (November 15, 2025)
-
-**Completed:**
-- ✅ Full REST API implementation in `server/routes.ts` with ~50 endpoints
-- ✅ Authentication routes: register, login, verify-email, me, profile, password
-- ✅ User data routes: addresses, payment cards (with Zod validation)
-- ✅ Product routes: CRUD, filtering, search, image upload
-- ✅ Shopping routes: cart, wishlist, comparison
-- ✅ Order routes: create, get, update status, admin stats
-- ✅ Promocode routes: CRUD for admin, validation for customers
-- ✅ Support chat routes: messages, attachments
-- ✅ WebSocket setup for real-time support chat (on `/ws` endpoint)
-- ✅ Utility modules: auth.ts, email.ts, upload.ts, bonuses.ts, promocodes.ts
-- ✅ Database storage layer with full CRUD operations for all 14 tables
-
-**Key Features:**
-- JWT authentication with role-based access control
-- Zod validation on all mutation endpoints
-- File upload with Multer (product images, chat attachments)
-- WebSocket support for real-time chat broadcasting
-- Bonus points calculation and promocode validation
-- Email verification with Nodemailer
-
-### Phase 1: Basic Frontend-Backend Integration (November 15, 2025) ✅
-
-**Completed:**
-- ✅ Created comprehensive API client layer (`client/src/lib/api.ts`) with typed request functions for all endpoints
-- ✅ Implemented Zustand stores for global state:
-  - `authStore.ts` - User authentication state, token management, login/logout
-  - `cartStore.ts` - Shopping cart state with safe total calculations
-- ✅ Created React Query hooks for server state management:
-  - `useAuth.ts` - Authentication queries and mutations
-  - `useCategories.ts` - Category data fetching
-  - `useProducts.ts` - Product listing with filters and search
-  - `useCart.ts` - Cart operations with authentication guards
-- ✅ Integrated authentication pages with real API:
-  - Login page with email/password validation
-  - Registration page with form validation
-  - Email verification page with token handling
-- ✅ Integrated main user-facing pages with data fetching:
-  - Home page with featured products and categories
-  - Catalog page with filtering and search
-  - Product detail page with add-to-cart
-  - Cart page with quantity updates and totals
-- ✅ Created `CartItemWithProduct` DTO type for proper cart data structure
-- ✅ Backend enhancement: `getCartItems()` returns product data via JOIN with decimal normalization
-- ✅ Frontend safety: Cart calculations handle null products, invalid prices, NaN values
-- ✅ TypeScript type safety: Full end-to-end type checking between server and client
-- ✅ Development workflow running successfully on port 5000
-
-**Technical Achievements:**
-- Type-safe API layer with proper error handling (ApiError class)
-- Server/client data contract with CartItemWithProduct DTO
-- Decimal field normalization (PostgreSQL decimal → string → number parsing)
-- Authentication guards preventing queries when logged out
-- Safe cart totals with null/NaN/negative price handling
-- Auto-clearing cart on authentication errors
-
-**Design Decisions:**
-- Zustand for global UI state (lightweight, simple API)
-- React Query for server state (caching, auto-refetch, optimistic updates)
-- Shadcn UI components for consistent design system
-- Form validation with React Hook Form + Zod
-- JWT tokens stored in localStorage with auto-logout on 401
-
-**Next Steps:**
-- Phase 2: Advanced Features & User Experience
-  - Protected routes component for authenticated pages
-  - Header integration with real user data and cart count
-  - Checkout flow (delivery selection, payment integration)
-  - Admin panel pages (product management, order processing)
-  - Support chat UI with WebSocket integration
-- Phase 3: Polish & Production Readiness
-  - Error boundaries and loading states
-  - Responsive design improvements
-  - Performance optimization
-  - Integration tests
-  - Deployment configuration
+- **Payment Integration:** YooKassa SDK
+- **Delivery Services:** CDEK API, Boxberry API
+- **Email Service:** Nodemailer (for transactional emails)
+- **Database Service:** Neon serverless PostgreSQL
+- **Development Tools:** Vite, Drizzle Kit, ESBuild
