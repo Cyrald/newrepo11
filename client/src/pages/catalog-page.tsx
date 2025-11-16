@@ -1,6 +1,6 @@
-import { useState } from "react"
-import { useRoute, useSearch } from "wouter"
-import { SlidersHorizontal } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { useRoute, useSearch, useLocation } from "wouter"
+import { SlidersHorizontal, Search, X } from "lucide-react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { ProductCard } from "@/components/product-card"
@@ -25,11 +25,13 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Slider } from "@/components/ui/slider"
+import { Input } from "@/components/ui/input"
 import { useProducts } from "@/hooks/useProducts"
 import { useCategories } from "@/hooks/useCategories"
 
 export default function CatalogPage() {
   const [, params] = useRoute("/catalog")
+  const [location, setLocation] = useLocation()
   const searchParams = useSearch()
   const urlParams = new URLSearchParams(searchParams)
   
@@ -38,7 +40,12 @@ export default function CatalogPage() {
   )
   const [priceRange, setPriceRange] = useState([0, 10000])
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
+  const [inputSearch, setInputSearch] = useState(urlParams.get("search") || "")
+  const previousSearch = useRef(urlParams.get("search") || "")
+
+  // Derive searchQuery and currentPage from URL (single source of truth)
+  const searchQuery = urlParams.get("search") || ""
+  const currentPage = parseInt(urlParams.get("page") || "1", 10)
 
   const { data: categoriesData, isLoading: categoriesLoading } = useCategories()
   const { data: productsData, isLoading: productsLoading } = useProducts({
@@ -46,6 +53,7 @@ export default function CatalogPage() {
     minPrice: priceRange[0],
     maxPrice: priceRange[1],
     sortBy: sortBy,
+    search: searchQuery || undefined,
     page: currentPage,
     limit: 12,
   })
@@ -56,23 +64,63 @@ export default function CatalogPage() {
   const totalPages = productsData?.totalPages || 1
   const isLoading = productsLoading
 
+  // Sync input with URL changes (for browser back/forward and direct URL loads)
+  useEffect(() => {
+    const urlSearch = urlParams.get("search") || ""
+    if (urlSearch !== previousSearch.current) {
+      previousSearch.current = urlSearch
+      setInputSearch(urlSearch)
+    }
+  }, [searchParams])
+
+  const updateURL = (updates: { search?: string; page?: number; resetPage?: boolean }) => {
+    const newParams = new URLSearchParams(searchParams)
+    
+    if (updates.search !== undefined) {
+      if (updates.search) {
+        newParams.set("search", updates.search)
+      } else {
+        newParams.delete("search")
+      }
+    }
+    
+    if (updates.resetPage || updates.page === 1) {
+      newParams.delete("page")
+    } else if (updates.page !== undefined && updates.page > 1) {
+      newParams.set("page", updates.page.toString())
+    }
+    
+    const newUrl = `/catalog${newParams.toString() ? '?' + newParams.toString() : ''}`
+    setLocation(newUrl)
+  }
+
   const handleCategoryToggle = (categoryId: string) => {
-    setCurrentPage(1) // Reset BEFORE changing filter (React batches both updates)
     setSelectedCategories(prev =>
       prev.includes(categoryId)
         ? prev.filter(id => id !== categoryId)
         : [...prev, categoryId]
     )
+    updateURL({ resetPage: true })
   }
 
   const handlePriceRangeChange = (newRange: number[]) => {
-    setCurrentPage(1) // Reset BEFORE changing filter
     setPriceRange(newRange)
+    updateURL({ resetPage: true })
   }
 
   const handleSortChange = (value: string) => {
-    setCurrentPage(1) // Reset BEFORE changing sort
     setSortBy(value as typeof sortBy)
+    updateURL({ resetPage: true })
+  }
+
+  const handleSearchChange = (value: string) => {
+    setInputSearch(value)
+    previousSearch.current = value
+    updateURL({ search: value, resetPage: true })
+  }
+
+  const handlePageChange = (page: number) => {
+    updateURL({ page })
   }
 
   const FilterContent = () => (
@@ -124,9 +172,9 @@ export default function CatalogPage() {
         variant="outline"
         className="w-full"
         onClick={() => {
-          setCurrentPage(1) // Reset BEFORE clearing filters
           setSelectedCategories([])
           setPriceRange([0, 10000])
+          handleSearchChange("")
         }}
         data-testid="button-reset-filters"
       >
@@ -141,9 +189,31 @@ export default function CatalogPage() {
 
       <main className="flex-1">
         <div className="container mx-auto px-4 py-8">
-          <h1 className="mb-8 font-serif text-3xl md:text-4xl font-semibold" data-testid="text-page-title">
+          <h1 className="mb-6 font-serif text-3xl md:text-4xl font-semibold" data-testid="text-page-title">
             Каталог товаров
           </h1>
+
+          {/* Search Bar */}
+          <div className="mb-8 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Поиск товаров..."
+              value={inputSearch}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="pl-9 pr-9"
+              data-testid="input-search"
+            />
+            {inputSearch && (
+              <button
+                onClick={() => handleSearchChange("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                data-testid="button-clear-search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
 
           <div className="flex flex-col gap-8 lg:flex-row">
             {/* Filters - Desktop */}
@@ -208,9 +278,9 @@ export default function CatalogPage() {
                   action={{
                     label: "Сбросить фильтры",
                     onClick: () => {
-                      setCurrentPage(1) // Reset BEFORE clearing filters
                       setSelectedCategories([])
                       setPriceRange([0, 10000])
+                      handleSearchChange("")
                     },
                   }}
                 />
@@ -228,7 +298,7 @@ export default function CatalogPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                        onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
                         data-testid="button-prev-page"
                       >
@@ -253,7 +323,7 @@ export default function CatalogPage() {
                                 <Button
                                   variant={currentPage === page ? "default" : "outline"}
                                   size="sm"
-                                  onClick={() => setCurrentPage(page)}
+                                  onClick={() => handlePageChange(page)}
                                   className="w-10"
                                   data-testid={`button-page-${page}`}
                                 >
@@ -267,7 +337,7 @@ export default function CatalogPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                        onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages}
                         data-testid="button-next-page"
                       >
