@@ -189,11 +189,6 @@ export function Header() {
                     Избранное
                   </Button>
                 </Link>
-                <Link href="/comparison" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-start" data-testid="link-comparison-mobile">
-                    Сравнение
-                  </Button>
-                </Link>
                 {isAuthenticated && (
                   hasStaffRole ? (
                     <Link href="/admin" onClick={() => setMobileMenuOpen(false)}>

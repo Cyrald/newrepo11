@@ -19,7 +19,6 @@ const RegisterPage = lazy(() => import("@/pages/register-page"));
 const VerifyEmailPage = lazy(() => import("@/pages/verify-email-page"));
 const ProfilePage = lazy(() => import("@/pages/profile-page"));
 const WishlistPage = lazy(() => import("@/pages/wishlist-page"));
-const ComparisonPage = lazy(() => import("@/pages/comparison-page"));
 const PrivacyPolicyPage = lazy(() => import("@/pages/privacy-policy-page"));
 const AdminDashboardPage = lazy(() => import("@/pages/admin/dashboard-page"));
 const AdminUsersPage = lazy(() => import("@/pages/admin/users-page"));
@@ -75,11 +74,6 @@ function Router() {
       <Route path="/wishlist">
         <ProtectedRoute>
           <WishlistPage />
-        </ProtectedRoute>
-      </Route>
-      <Route path="/comparison">
-        <ProtectedRoute>
-          <ComparisonPage />
         </ProtectedRoute>
       </Route>
       

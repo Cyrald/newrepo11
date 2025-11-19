@@ -8,8 +8,6 @@ import type {
   CartItemWithProduct,
   WishlistItem,
   WishlistItemWithProduct,
-  ComparisonItem,
-  ComparisonItemWithProduct,
   Order,
   OrderWithTotal,
   UserAddress,
@@ -233,22 +231,6 @@ export const wishlistApi = {
 
   remove: (productId: string) =>
     fetchApi<{ success: boolean }>(`/api/wishlist/${productId}`, {
-      method: "DELETE",
-    }),
-};
-
-// Сравнение
-export const comparisonApi = {
-  get: () => fetchApi<ComparisonItemWithProduct[]>("/api/comparison"),
-
-  add: (productId: string) =>
-    fetchApi<{ success: boolean }>("/api/comparison", {
-      method: "POST",
-      body: JSON.stringify({ productId }),
-    }),
-
-  remove: (productId: string) =>
-    fetchApi<{ success: boolean }>(`/api/comparison/${productId}`, {
       method: "DELETE",
     }),
 };

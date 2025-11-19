@@ -42,6 +42,7 @@ import type { Product } from "@shared/schema"
 // Lazy loaded image component with Intersection Observer
 function LazyProductImage({ product }: { product: Product }) {
   const [isVisible, setIsVisible] = useState(false)
+  const [imageError, setImageError] = useState(false)
   const imgRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -64,16 +65,17 @@ function LazyProductImage({ product }: { product: Product }) {
     return () => observer.disconnect()
   }, [])
 
-  const firstImage = (product as any).images && (product as any).images.length > 0 ? (product as any).images[0].imageUrl || (product as any).images[0].url : null
+  const firstImage = (product as any).images?.[0]?.url || null
 
   return (
     <div ref={imgRef} className="w-12 h-16 bg-muted rounded overflow-hidden flex items-center justify-center">
-      {isVisible && firstImage ? (
+      {isVisible && firstImage && !imageError ? (
         <img
           src={firstImage}
           alt={product.name}
           className="w-full h-full object-cover"
           loading="lazy"
+          onError={() => setImageError(true)}
         />
       ) : (
         <ImageIcon className="h-6 w-6 text-muted-foreground" />

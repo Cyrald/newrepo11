@@ -14,7 +14,6 @@ export function useLogin() {
       login(response.user);
       queryClient.invalidateQueries({ queryKey: ["cart"] });
       queryClient.invalidateQueries({ queryKey: ["wishlist"] });
-      queryClient.invalidateQueries({ queryKey: ["comparison"] });
     },
   });
 }

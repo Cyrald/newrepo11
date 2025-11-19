@@ -1,18 +1,32 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/stores/authStore';
+import { useLocation } from 'wouter';
 
 const prefetchedRoutes = new Set<string>();
 
+const safeRequestIdleCallback = (
+  callback: () => void,
+  options?: { timeout?: number }
+) => {
+  if (typeof requestIdleCallback !== 'undefined') {
+    requestIdleCallback(callback, options);
+  } else {
+    setTimeout(callback, 1);
+  }
+};
+
 const routeComponentMap: Record<string, () => Promise<any>> = {
+  '/': () => import('@/pages/home-page'),
   '/catalog': () => import('@/pages/catalog-page'),
   '/products': () => import('@/pages/product-detail-page'),
   '/cart': () => import('@/pages/cart-page'),
   '/wishlist': () => import('@/pages/wishlist-page'),
   '/profile': () => import('@/pages/profile-page'),
   '/checkout': () => import('@/pages/checkout-page'),
-  '/comparison': () => import('@/pages/comparison-page'),
   '/login': () => import('@/pages/login-page'),
   '/register': () => import('@/pages/register-page'),
+  '/verify-email': () => import('@/pages/verify-email-page'),
+  '/privacy-policy': () => import('@/pages/privacy-policy-page'),
   '/admin': () => import('@/pages/admin/dashboard-page'),
   '/admin/users': () => import('@/pages/admin/users-page'),
   '/admin/products': () => import('@/pages/admin/products-page'),
@@ -67,6 +81,7 @@ export function usePrefetchRoutes() {
   const authInitialized = useAuthStore((state) => state.authInitialized);
   const user = useAuthStore((state) => state.user);
   const previousAuthState = useRef<boolean | null>(null);
+  const [location] = useLocation();
 
   useEffect(() => {
     if (!authInitialized || !shouldPrefetch()) {
@@ -76,12 +91,14 @@ export function usePrefetchRoutes() {
     const hasStaffRole = user?.roles?.some(role => 
       ['admin', 'marketer', 'consultant'].includes(role)
     );
+    
+    const isOnAdminPage = (location || '').startsWith('/admin');
 
     const prefetchWithDelay = (routes: string[], delay: number) => {
       setTimeout(() => {
         if (shouldPrefetch()) {
           routes.forEach(route => {
-            requestIdleCallback(() => prefetchRoute(route), { timeout: 2000 });
+            safeRequestIdleCallback(() => prefetchRoute(route), { timeout: 2000 });
           });
         }
       }, delay);
@@ -91,12 +108,14 @@ export function usePrefetchRoutes() {
       prefetchWithDelay(['/login', '/register'], 0);
       
       prefetchWithDelay(['/catalog', '/products'], 1000);
+      
+      prefetchWithDelay(['/privacy-policy'], 5000);
     } else {
       prefetchWithDelay(['/catalog', '/cart', '/wishlist', '/products'], 0);
       
       prefetchWithDelay(['/profile', '/checkout'], 3000);
       
-      prefetchWithDelay(['/comparison'], 5000);
+      prefetchWithDelay(['/privacy-policy'], 5000);
 
       if (hasStaffRole) {
         prefetchWithDelay([
@@ -114,15 +133,41 @@ export function usePrefetchRoutes() {
     if (previousAuthState.current === false && isAuthenticated === true) {
       console.log('🔄 User just authenticated, loading protected routes...');
       
-      requestIdleCallback(() => {
+      safeRequestIdleCallback(() => {
         prefetchRoute('/cart');
         prefetchRoute('/wishlist');
         prefetchRoute('/profile');
+        
+        if (hasStaffRole) {
+          console.log('👤 Staff user detected, preloading admin routes...');
+          prefetchWithDelay([
+            '/admin',
+            '/admin/products',
+            '/admin/categories',
+            '/admin/orders',
+            '/admin/promocodes',
+            '/admin/users',
+            '/admin/support'
+          ], 1000);
+        }
+      });
+    }
+    
+    if (isOnAdminPage && hasStaffRole && !prefetchedRoutes.has('/admin')) {
+      console.log('📍 On admin page, prefetching all admin routes...');
+      safeRequestIdleCallback(() => {
+        prefetchRoute('/admin');
+        prefetchRoute('/admin/products');
+        prefetchRoute('/admin/categories');
+        prefetchRoute('/admin/orders');
+        prefetchRoute('/admin/promocodes');
+        prefetchRoute('/admin/users');
+        prefetchRoute('/admin/support');
       });
     }
 
     previousAuthState.current = isAuthenticated;
-  }, [isAuthenticated, authInitialized, user]);
+  }, [isAuthenticated, authInitialized, user, location]);
 }
 
 export function usePrefetchFromReturnUrl() {
@@ -137,7 +182,7 @@ export function usePrefetchFromReturnUrl() {
     if (returnUrl) {
       console.log(`🎯 Detected returnUrl: ${returnUrl}, prefetching...`);
       
-      requestIdleCallback(() => {
+      safeRequestIdleCallback(() => {
         const normalizedUrl = returnUrl.split('?')[0].split('#')[0];
         
         if (normalizedUrl.startsWith('/cart')) {
@@ -148,8 +193,6 @@ export function usePrefetchFromReturnUrl() {
           prefetchRoute('/profile');
         } else if (normalizedUrl.startsWith('/checkout')) {
           prefetchRoute('/checkout');
-        } else if (normalizedUrl.startsWith('/comparison')) {
-          prefetchRoute('/comparison');
         } else if (normalizedUrl.startsWith('/admin')) {
           const segments = normalizedUrl.split('/');
           if (segments.length === 2) {

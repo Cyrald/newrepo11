@@ -25,8 +25,6 @@ import {
   type CartItemWithProduct,
   type WishlistItem,
   type InsertWishlistItem,
-  type ComparisonItem,
-  type InsertComparisonItem,
   type SupportMessage,
   type InsertSupportMessage,
   type SupportMessageAttachment,
@@ -43,7 +41,6 @@ import {
   orders,
   cartItems,
   wishlistItems,
-  comparisonItems,
   supportConversations,
   supportMessages,
   supportMessageAttachments,
@@ -126,10 +123,6 @@ export interface IStorage {
   getWishlistItems(userId: string): Promise<WishlistItem[]>;
   addWishlistItem(item: InsertWishlistItem): Promise<WishlistItem>;
   deleteWishlistItem(userId: string, productId: string): Promise<void>;
-  
-  getComparisonItems(userId: string): Promise<ComparisonItem[]>;
-  addComparisonItem(item: InsertComparisonItem): Promise<ComparisonItem>;
-  deleteComparisonItem(userId: string, productId: string): Promise<void>;
   
   getSupportMessages(userId: string): Promise<SupportMessage[]>;
   getAllSupportConversations(status?: 'active' | 'archived'): Promise<{ userId: string; lastMessage: SupportMessage; unreadCount: number; status: string }[]>;
@@ -684,68 +677,6 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(wishlistItems)
       .where(and(eq(wishlistItems.userId, userId), eq(wishlistItems.productId, productId)));
-  }
-
-  async getComparisonItems(userId: string): Promise<ComparisonItem[]> {
-    const items = await db
-      .select()
-      .from(comparisonItems)
-      .where(eq(comparisonItems.userId, userId));
-    
-    if (items.length === 0) {
-      return [];
-    }
-    
-    const uniqueProductIds = Array.from(new Set(items.map((item) => item.productId)));
-    const productsData = await db
-      .select()
-      .from(products)
-      .where(inArray(products.id, uniqueProductIds));
-    
-    const allImages = await db
-      .select()
-      .from(productImages)
-      .where(inArray(productImages.productId, uniqueProductIds))
-      .orderBy(productImages.sortOrder);
-    
-    const imagesByProductId = allImages.reduce((acc, img) => {
-      if (!acc[img.productId]) acc[img.productId] = [];
-      acc[img.productId].push(img);
-      return acc;
-    }, {} as Record<string, typeof allImages>);
-    
-    const productById = productsData.reduce((acc, p) => {
-      acc[p.id] = {
-        ...p,
-        price: p.price?.toString() || "0",
-        discountPercentage: p.discountPercentage?.toString() || "0",
-        rating: p.rating?.toString() || "0",
-        weight: p.weight?.toString() || null,
-        volume: p.volume?.toString() || null,
-        dimensionsHeight: p.dimensionsHeight?.toString() || null,
-        dimensionsLength: p.dimensionsLength?.toString() || null,
-        dimensionsWidth: p.dimensionsWidth?.toString() || null,
-      };
-      return acc;
-    }, {} as Record<string, any>);
-    
-    return items.map((item) => ({
-      ...item,
-      product: productById[item.productId]
-        ? { ...productById[item.productId], images: imagesByProductId[item.productId] || [] }
-        : undefined,
-    })) as any;
-  }
-
-  async addComparisonItem(item: InsertComparisonItem): Promise<ComparisonItem> {
-    const [comparisonItem] = await db.insert(comparisonItems).values(item).returning();
-    return comparisonItem;
-  }
-
-  async deleteComparisonItem(userId: string, productId: string): Promise<void> {
-    await db
-      .delete(comparisonItems)
-      .where(and(eq(comparisonItems.userId, userId), eq(comparisonItems.productId, productId)));
   }
 
   async getSupportMessages(userId: string): Promise<SupportMessage[]> {

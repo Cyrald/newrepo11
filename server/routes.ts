@@ -543,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         offset = "0",
       } = req.query;
 
-      const limitNum = Math.min(sanitizeNumericParam(limit as string, 20), 100);
+      const limitNum = Math.min(sanitizeNumericParam(limit as string, 20), 10000);
       const offsetNum = sanitizeNumericParam(offset as string, 0);
       const sanitizedSearch = sanitizeSearchQuery(search as string);
 
@@ -927,37 +927,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ message: "Товар удалён из избранного" });
     } catch (error) {
       res.status(500).json({ message: "Ошибка удаления из избранного" });
-    }
-  });
-
-  app.get("/api/comparison", authenticateToken, async (req, res) => {
-    try {
-      const items = await storage.getComparisonItems(req.userId!);
-      res.json(items);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка получения сравнения" });
-    }
-  });
-
-  app.post("/api/comparison", authenticateToken, async (req, res) => {
-    try {
-      const { productId } = req.body;
-      const item = await storage.addComparisonItem({
-        userId: req.userId!,
-        productId,
-      });
-      res.json(item);
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка добавления к сравнению" });
-    }
-  });
-
-  app.delete("/api/comparison/:productId", authenticateToken, async (req, res) => {
-    try {
-      await storage.deleteComparisonItem(req.userId!, req.params.productId);
-      res.json({ message: "Товар удалён из сравнения" });
-    } catch (error) {
-      res.status(500).json({ message: "Ошибка удаления из сравнения" });
     }
   });
 
