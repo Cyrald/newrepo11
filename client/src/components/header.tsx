@@ -95,18 +95,19 @@ export function Header() {
             size="icon"
             asChild
             data-testid="link-cart"
-            className="relative"
           >
             <Link href="/cart">
-              <ShoppingCart className="h-5 w-5" />
-              {cartItemsCount > 0 && (
-                <Badge
-                  className="absolute -right-0 -top-0 flex h-4 w-4 min-w-[16px] items-center justify-center rounded-full p-0 text-[9px] bg-red-500 hover:bg-red-500 dark:bg-orange-500 dark:hover:bg-orange-500 text-white border-0 pointer-events-none"
-                  data-testid="badge-cart-count"
-                >
-                  {cartItemsCount > 99 ? "99+" : cartItemsCount}
-                </Badge>
-              )}
+              <span className="relative inline-block">
+                <ShoppingCart className="h-5 w-5" />
+                {cartItemsCount > 0 && (
+                  <Badge
+                    className="absolute -right-1 -top-1 flex h-4 w-4 min-w-[16px] items-center justify-center rounded-full p-0 text-[9px] bg-red-500 hover:bg-red-500 dark:bg-orange-500 dark:hover:bg-orange-500 text-white border-0 pointer-events-none"
+                    data-testid="badge-cart-count"
+                  >
+                    {cartItemsCount > 99 ? "99+" : cartItemsCount}
+                  </Badge>
+                )}
+              </span>
             </Link>
           </Button>
 

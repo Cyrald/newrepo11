@@ -21,23 +21,25 @@ export function SupportChatLauncher() {
     return null
   }
 
+  const toggleChat = () => {
+    if (isOpen) {
+      closeChat()
+    } else {
+      openChat()
+    }
+  }
+
   return (
     <>
-      {/* Floating Chat Button */}
-      {!isOpen && (
-        <Button
-          onClick={openChat}
-          size="icon"
-          className="!fixed bottom-6 right-6 h-11 w-11 rounded-full shadow-lg hover:shadow-xl transition-all !z-[9999] bg-primary hover:bg-primary/90"
-          aria-label="Открыть чат поддержки"
-        >
-          <MessageCircle className="h-6 w-6" />
-          {/* Unread badge - можно добавить позже */}
-          {/* <Badge className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center">
-            3
-          </Badge> */}
-        </Button>
-      )}
+      {/* Floating Chat Button - Always visible, toggles open/close */}
+      <Button
+        onClick={toggleChat}
+        size="icon"
+        className="!fixed bottom-6 right-6 h-[52px] w-[52px] rounded-full shadow-lg hover:shadow-xl transition-all !z-[9999] bg-primary hover:bg-primary/90"
+        aria-label={isOpen ? "Закрыть чат поддержки" : "Открыть чат поддержки"}
+      >
+        {isOpen ? <X className="h-7 w-7" /> : <MessageCircle className="h-7 w-7" />}
+      </Button>
 
       {/* Chat Widget */}
       <SupportChatWidget isOpen={isOpen} onClose={closeChat} />

@@ -144,27 +144,27 @@ export function SupportChatWidget({ isOpen, onClose }: SupportChatWidgetProps) {
 
   if (!isOpen) return null
 
-  // Show chat widget in bottom right corner - responsive design
+  // Show chat widget in bottom right corner - responsive design (125% larger)
   return (
-    <div className="!fixed bottom-20 right-6 !z-[9999] flex flex-col w-[90vw] sm:w-[252px] h-[50vh] sm:h-[390px] max-h-[390px] bg-background border rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b bg-primary text-primary-foreground rounded-t-2xl">
+    <div className="!fixed bottom-[76px] right-6 !z-[9999] flex flex-col w-[90vw] sm:w-[315px] h-[55vh] sm:h-[487px] max-h-[487px] bg-background border rounded-2xl shadow-2xl animate-in slide-in-from-bottom-4 duration-300">
+      {/* Header - 50% smaller */}
+      <div className="flex items-center justify-between px-3 py-2 border-b bg-primary text-primary-foreground rounded-t-2xl">
         <div className="flex items-center gap-2">
-          <MessageCircle className="h-5 w-5" />
-          <h3 className="font-semibold">Техническая поддержка</h3>
+          <MessageCircle className="h-4 w-4" />
+          <h3 className="text-sm font-semibold truncate">Техническая поддержка</h3>
         </div>
         <Button
           variant="ghost"
           size="icon"
           onClick={onClose}
-          className="h-8 w-8 text-primary-foreground hover:bg-primary-foreground/20"
+          className="h-6 w-6 text-primary-foreground hover:bg-primary-foreground/20"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3 w-3" />
         </Button>
       </div>
 
-      {/* Messages Area */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+      {/* Messages Area - Increased height */}
+      <ScrollArea ref={scrollAreaRef} className="flex-1 p-3">
         {isLoading ? (
           <div className="flex items-center justify-center h-full">
             <div className="text-center">
@@ -211,27 +211,27 @@ export function SupportChatWidget({ isOpen, onClose }: SupportChatWidgetProps) {
         )}
       </ScrollArea>
 
-      {/* Input Area */}
-      <div className="p-4 border-t">
+      {/* Input Area - Smaller */}
+      <div className="px-3 py-2 border-t">
         <div className="flex gap-2">
           <Textarea
             placeholder="Введите сообщение..."
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyPress}
-            rows={2}
-            className="resize-none"
+            rows={1}
+            className="resize-none min-h-[36px]"
           />
           <Button
             onClick={handleSendMessage}
             disabled={!message.trim() || sendMessageMutation.isPending}
-            size="icon"
-            className="h-auto"
+            size="sm"
+            className="h-9 w-9 p-0"
           >
             <Send className="h-4 w-4" />
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-1.5">
           Нажмите Enter для отправки, Shift+Enter для новой строки
         </p>
       </div>

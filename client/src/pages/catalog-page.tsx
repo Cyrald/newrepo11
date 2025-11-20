@@ -138,15 +138,14 @@ export default function CatalogPage() {
   }
 
   const handleAddToCart = async (productId: string) => {
-    try {
-      await addToCart.mutateAsync({ productId, quantity: 1 })
-    } catch (error: any) {
-      toast({
-        title: "Ошибка",
-        description: error.message || "Не удалось добавить товар в корзину",
-        variant: "destructive",
-      })
+    if (!isAuthenticated) {
+      toast({ title: "Требуется авторизация", description: "Войдите для добавления товаров в корзину", variant: "destructive" })
+      return
     }
+    addToCart.mutate({ productId, quantity: 1 }, {
+      onSuccess: () => toast({ title: "Товар добавлен в корзину" }),
+      onError: () => toast({ title: "Ошибка", description: "Не удалось добавить товар", variant: "destructive" })
+    })
   }
 
   const handleToggleWishlist = async (productId: string) => {
