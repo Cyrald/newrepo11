@@ -544,6 +544,8 @@ export type OrderWithTotal = Order & {
   totalAmount: number;
 };
 
+export type SupportConversation = typeof supportConversations.$inferSelect;
+
 export type SupportMessage = typeof supportMessages.$inferSelect;
 export type InsertSupportMessage = z.infer<typeof insertSupportMessageSchema>;
 

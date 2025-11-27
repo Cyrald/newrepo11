@@ -25,6 +25,7 @@ import {
   type CartItemWithProduct,
   type WishlistItem,
   type InsertWishlistItem,
+  type SupportConversation,
   type SupportMessage,
   type InsertSupportMessage,
   type SupportMessageAttachment,
@@ -247,10 +248,11 @@ export class DatabaseStorage implements IStorage {
       conditions.push(or(...categoryConditions)!);
     }
     if (filters?.search) {
+      const sanitizedSearch = filters.search.replace(/[%_\\]/g, '\\$&');
       conditions.push(
         or(
-          like(products.name, `%${filters.search}%`),
-          like(products.description, `%${filters.search}%`)
+          like(products.name, `%${sanitizedSearch}%`),
+          like(products.description, `%${sanitizedSearch}%`)
         )!
       );
     }
@@ -869,19 +871,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchClosedConversations(filters: { email?: string; dateFrom?: Date; dateTo?: Date }): Promise<{ userId: string; lastMessage: SupportMessage; status: string; closedAt: Date | null }[]> {
-    let query = db
-      .select({
-        conversation: supportConversations,
-        user: users
-      })
-      .from(supportConversations)
-      .innerJoin(users, eq(supportConversations.userId, users.id))
-      .where(eq(supportConversations.status, 'closed'));
-    
-    const conditions = [];
+    const conditions: ReturnType<typeof eq>[] = [eq(supportConversations.status, 'closed')];
     
     if (filters.email) {
-      conditions.push(like(users.email, `%${filters.email}%`));
+      const sanitizedEmail = filters.email.replace(/[%_\\]/g, '\\$&');
+      conditions.push(like(users.email, `%${sanitizedEmail}%`));
     }
     
     if (filters.dateFrom) {
@@ -892,11 +886,15 @@ export class DatabaseStorage implements IStorage {
       conditions.push(lte(supportConversations.closedAt, filters.dateTo));
     }
     
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions)) as any;
-    }
-    
-    const results = await query.orderBy(desc(supportConversations.closedAt));
+    const results = await db
+      .select({
+        conversation: supportConversations,
+        user: users
+      })
+      .from(supportConversations)
+      .innerJoin(users, eq(supportConversations.userId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(supportConversations.closedAt));
     
     const finalResults = [];
     

@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { db } from "./db";
 import {
   hashPassword,
   comparePassword,
@@ -19,11 +20,17 @@ import {
 } from "./upload";
 import { productImagePipeline, chatImagePipeline } from "./ImagePipeline";
 import { calculateCashback, canUseBonuses } from "./bonuses";
-import { validatePromocode, applyPromocode } from "./promocodes";
+import { validatePromocode } from "./promocodes";
 import {
   registerSchema,
   loginSchema,
   createOrderSchema,
+  products,
+  users,
+  orders,
+  cartItems,
+  promocodes,
+  promocodeUsage,
 } from "@shared/schema";
 import { z } from "zod";
 import {
@@ -32,13 +39,59 @@ import {
   promocodeValidationLimiter,
 } from "./middleware/rateLimiter";
 import { sanitizeSearchQuery, sanitizeNumericParam, sanitizeId } from "./utils/sanitize";
+import { eq, sql, and } from "drizzle-orm";
+import * as cookieSignature from "cookie-signature";
+import { env } from "./env";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
   const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-  // Map to track connected users: userId -> { ws: WebSocket, roles: string[] }
   const connectedUsers = new Map<string, { ws: any, roles: string[] }>();
+
+  async function validateSessionFromCookie(cookieHeader: string | undefined): Promise<{ userId: string; userRoles: string[] } | null> {
+    if (!cookieHeader) return null;
+    
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [key, value] = cookie.trim().split('=');
+      if (key && value) acc[key] = value;
+      return acc;
+    }, {} as Record<string, string>);
+    
+    const sessionCookie = cookies['sessionId'];
+    if (!sessionCookie) return null;
+    
+    const decodedCookie = decodeURIComponent(sessionCookie);
+    
+    if (!decodedCookie.startsWith('s:')) {
+      return null;
+    }
+    
+    const signedValue = decodedCookie.slice(2);
+    const unsignedValue = cookieSignature.unsign(signedValue, env.SESSION_SECRET);
+    
+    if (unsignedValue === false) {
+      return null;
+    }
+    
+    const sid = unsignedValue;
+    
+    try {
+      const result = await db.execute(sql`SELECT sess FROM session WHERE sid = ${sid}`);
+      if (!result.rows || result.rows.length === 0) return null;
+      
+      const sessionData = result.rows[0].sess as any;
+      if (!sessionData || !sessionData.userId) return null;
+      
+      return {
+        userId: sessionData.userId,
+        userRoles: sessionData.userRoles || []
+      };
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return null;
+    }
+  }
 
   wss.on("connection", async (ws: any, req: any) => {
     let userId: string | null = null;
@@ -48,19 +101,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         const message = JSON.parse(data.toString());
         
-        // WebSocket only used for notifications, not for creating messages
-        // All messages should be created via POST /api/support/messages
-        if (message.type === "auth" && message.userId) {
-          // TODO: Validate userId against actual session cookie
-          // For now, just accept and mark as authenticated
-          const authUserId = message.userId as string;
-          userId = authUserId;
+        if (message.type === "auth") {
+          const sessionData = await validateSessionFromCookie(req.headers.cookie);
+          
+          if (!sessionData) {
+            ws.send(JSON.stringify({
+              type: "auth_error",
+              message: "Сессия недействительна. Пожалуйста, войдите заново.",
+            }));
+            ws.close();
+            return;
+          }
+          
+          if (message.userId && message.userId !== sessionData.userId) {
+            ws.send(JSON.stringify({
+              type: "auth_error",
+              message: "Несоответствие идентификатора пользователя",
+            }));
+            ws.close();
+            return;
+          }
+          
+          userId = sessionData.userId;
           authenticated = true;
           
-          // Get user roles
-          const userRoleRecords = await storage.getUserRoles(authUserId);
+          const userRoleRecords = await storage.getUserRoles(userId);
           const userRoles = userRoleRecords.map(r => r.role);
-          connectedUsers.set(authUserId, { ws, roles: userRoles });
+          connectedUsers.set(userId, { ws, roles: userRoles });
           
           ws.send(JSON.stringify({
             type: "auth_success",
@@ -1034,16 +1101,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Пользователь не найден" });
       }
 
-      for (const item of data.items) {
-        const product = await storage.getProduct(item.productId);
-        if (!product) {
-          return res.status(404).json({ message: `Товар ${item.productId} не найден` });
-        }
-        if (product.stockQuantity < item.quantity) {
-          return res.status(400).json({ 
-            message: `Недостаточно товара "${product.name}". Доступно: ${product.stockQuantity}, запрошено: ${item.quantity}` 
-          });
-        }
+      const bonusesUsed = data.bonusesUsed || 0;
+
+      if (data.promocodeId && bonusesUsed > 0) {
+        return res.status(400).json({ 
+          message: "Нельзя одновременно использовать промокод и бонусы. Выберите что-то одно." 
+        });
       }
 
       let subtotal = 0;
@@ -1054,15 +1117,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let discountAmount = 0;
       let promocodeId = null;
-
-      const bonusesUsed = data.bonusesUsed || 0;
-
-      // Проверка: нельзя одновременно использовать промокод и бонусы
-      if (data.promocodeId && bonusesUsed > 0) {
-        return res.status(400).json({ 
-          message: "Нельзя одновременно использовать промокод и бонусы. Выберите что-то одно." 
-        });
-      }
 
       if (data.promocodeId) {
         const promocodeValidation = await validatePromocode(
@@ -1076,10 +1130,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Промокод применяется только к стоимости товаров (subtotal)
       const subtotalAfterPromocode = subtotal - discountAmount;
-      
-      // Бонусы применяются к стоимости товаров после промокода
       const { maxUsable } = canUseBonuses(user.bonusBalance, subtotalAfterPromocode);
       
       if (bonusesUsed > maxUsable) {
@@ -1087,8 +1138,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const subtotalAfterBonuses = subtotalAfterPromocode - bonusesUsed;
-      
-      // Доставка добавляется к итогу отдельно
       const deliveryCost = 300;
       const total = subtotalAfterBonuses + deliveryCost;
 
@@ -1100,49 +1149,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substring(7).toUpperCase()}`;
 
-      const order = await storage.createOrder({
-        userId: req.userId!,
-        orderNumber,
-        status: "pending",
-        items: data.items as any,
-        subtotal: subtotal.toString(),
-        discountAmount: discountAmount.toString(),
-        bonusesUsed: bonusesUsed.toString(),
-        bonusesEarned: bonusesEarned.toString(),
-        promocodeId,
-        deliveryService: data.deliveryService,
-        deliveryType: data.deliveryType,
-        deliveryPointCode: data.deliveryPointCode || null,
-        deliveryAddress: data.deliveryAddress as any,
-        deliveryCost: deliveryCost.toString(),
-        deliveryTrackingNumber: null,
-        paymentMethod: data.paymentMethod,
-        paymentStatus: "pending",
-        yukassaPaymentId: null,
-        total: total.toString(),
+      const order = await db.transaction(async (tx) => {
+        for (const item of data.items) {
+          const lockedProducts = await tx.execute(
+            sql`SELECT * FROM products WHERE id = ${item.productId} FOR UPDATE`
+          );
+          
+          if (!lockedProducts.rows || lockedProducts.rows.length === 0) {
+            throw new Error(`PRODUCT_NOT_FOUND:${item.productId}`);
+          }
+          
+          const product = lockedProducts.rows[0] as any;
+          if (product.stock_quantity < item.quantity) {
+            throw new Error(`INSUFFICIENT_STOCK:${product.name}:${product.stock_quantity}:${item.quantity}`);
+          }
+        }
+
+        const [createdOrder] = await tx
+          .insert(orders)
+          .values({
+            userId: req.userId!,
+            orderNumber,
+            status: "pending",
+            items: data.items as any,
+            subtotal: subtotal.toString(),
+            discountAmount: discountAmount.toString(),
+            bonusesUsed: bonusesUsed.toString(),
+            bonusesEarned: bonusesEarned.toString(),
+            promocodeId,
+            deliveryService: data.deliveryService,
+            deliveryType: data.deliveryType,
+            deliveryPointCode: data.deliveryPointCode || null,
+            deliveryAddress: data.deliveryAddress as any,
+            deliveryCost: deliveryCost.toString(),
+            deliveryTrackingNumber: null,
+            paymentMethod: data.paymentMethod,
+            paymentStatus: "pending",
+            yukassaPaymentId: null,
+            total: total.toString(),
+          })
+          .returning();
+
+        for (const item of data.items) {
+          await tx
+            .update(products)
+            .set({ 
+              stockQuantity: sql`${products.stockQuantity} - ${item.quantity}`,
+              updatedAt: new Date()
+            })
+            .where(eq(products.id, item.productId));
+        }
+
+        if (bonusesUsed > 0) {
+          await tx
+            .update(users)
+            .set({ 
+              bonusBalance: user.bonusBalance - bonusesUsed,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, req.userId!));
+        }
+
+        if (promocodeId) {
+          const [promocode] = await tx
+            .select()
+            .from(promocodes)
+            .where(eq(promocodes.id, promocodeId))
+            .limit(1);
+
+          if (promocode) {
+            if (promocode.type === "single_use") {
+              await tx.delete(promocodes).where(eq(promocodes.id, promocodeId));
+            } else if (promocode.type === "temporary") {
+              await tx.insert(promocodeUsage).values({
+                promocodeId,
+                userId: req.userId!,
+                orderId: createdOrder.id,
+              });
+            }
+          }
+        }
+
+        await tx.delete(cartItems).where(eq(cartItems.userId, req.userId!));
+
+        return createdOrder;
       });
 
-      for (const item of data.items) {
-        await storage.decreaseProductStock(item.productId, item.quantity);
-      }
-
-      if (bonusesUsed > 0) {
-        await storage.updateUser(req.userId!, {
-          bonusBalance: user.bonusBalance - bonusesUsed,
-        });
-      }
-
-      if (promocodeId) {
-        await applyPromocode(promocodeId, req.userId!, order.id);
-      }
-
-      await storage.clearCart(req.userId!);
-
       res.json(order);
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: error.errors[0].message });
       }
+      
+      if (error.message?.startsWith('PRODUCT_NOT_FOUND:')) {
+        const productId = error.message.split(':')[1];
+        return res.status(404).json({ message: `Товар ${productId} не найден` });
+      }
+      
+      if (error.message?.startsWith('INSUFFICIENT_STOCK:')) {
+        const [, productName, available, requested] = error.message.split(':');
+        return res.status(400).json({ 
+          message: `Недостаточно товара "${productName}". Доступно: ${available}, запрошено: ${requested}` 
+        });
+      }
+      
+      console.error('Order creation error:', error);
       res.status(500).json({ message: "Ошибка создания заказа" });
     }
   });
