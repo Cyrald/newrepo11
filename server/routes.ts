@@ -150,8 +150,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       message: "Подключение установлено",
     }));
 
+    let isAlive = true;
+    ws.isAlive = true;
+
+    ws.on('pong', () => {
+      ws.isAlive = true;
+    });
+
+    const pingInterval = setInterval(() => {
+      if (ws.isAlive === false) {
+        logger.warn('WebSocket connection timeout - no pong received', { userId });
+        clearInterval(pingInterval);
+        ws.terminate();
+        connectedUsers.delete(userId);
+        messageRateLimits.delete(userId);
+        return;
+      }
+      
+      ws.isAlive = false;
+      ws.ping();
+    }, 30000);
+
     ws.on("message", async (data: any) => {
       try {
+        const MAX_MESSAGE_SIZE = 100 * 1024;
+        
+        if (data.length > MAX_MESSAGE_SIZE) {
+          logger.warn('WebSocket message too large', { userId, size: data.length });
+          ws.send(JSON.stringify({
+            type: "error",
+            message: "Сообщение слишком большое (максимум 100KB)",
+          }));
+          return;
+        }
+
         const msgNow = Date.now();
         const userMsgLimit = messageRateLimits.get(userId) || { count: 0, resetAt: msgNow + messageWindowMs };
         
@@ -180,8 +212,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
 
     ws.on("close", () => {
+      clearInterval(pingInterval);
       connectedUsers.delete(userId);
       messageRateLimits.delete(userId);
+    });
+
+    ws.on("error", (error: any) => {
+      logger.error('WebSocket error', { error, userId });
+      clearInterval(pingInterval);
     });
   });
 
