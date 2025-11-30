@@ -14,7 +14,7 @@ const {
   cookieOptions: {
     httpOnly: false,
     secure: env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: env.NODE_ENV === 'production' ? 'strict' : 'lax',
     maxAge: 365 * 24 * 60 * 60 * 1000,
   },
   size: 64,
@@ -27,8 +27,8 @@ export function csrfMiddleware(req: Request, res: Response, next: NextFunction):
     return next();
   }
   
-  // Skip CSRF for auth endpoints (login/register handle session changes)
-  if (req.path === '/auth/login' || req.path === '/auth/register') {
+  // Skip CSRF for initial token endpoint (used after login/register)
+  if (req.path === '/api/csrf-token-init') {
     return next();
   }
   
